@@ -34,7 +34,7 @@ Needs Python 3.9+. The MCMC uses `emcee`'s together with multiprocessing `Pool`.
 Standalone scripts should therefore be protected with `if __name__ == "__main__":` on platforms where multiprocessing requires it. 
 Jupyter notebooks require no additional setup.
 
-# Structure
+## Structure
 
 ```
 snope/
@@ -276,7 +276,7 @@ n_points = 1000
 It is recommended to test with a smaller number of steps for testing.
 Each likelihood evaluation integrates the geodesic equations using SciPy's **DOP853** integrator with `rtol=atol=1e-12`. 
 
-## Citation
+# Citation
 
 If you use **SNOPE** in published research, please cite the original observational dataset used in your analysis (e.g. Gillessen et al. 2017 for the S2 data):
 
