@@ -2,44 +2,80 @@
 
 **S**pherical-symmetric spacetime **N**umerical **O**rbit and **P**arameter **E**stimation.
 
-One integrator, one MCMC engine, one plotting module, shared across every
-spacetime you want to test against the S2 star's orbit around Sgr A*.
-Schwarzschild-de Sitter, quadratic gravity, and Brans-Dicke ship as
-worked examples. Adding a new metric means writing one short file, not
-another 800-line script.
+SNOPE is a simple Python framework for modelling stellar orbits in a static, spherically symmetric spacetime of choice and performing Bayesian parameter estimation using Markov Chain Monte Carlo (MCMC).
 
-## Why this exists
+It provides a common geodesic integration and inference pipeline that is independent of the underlying gravity model. New spacetime metrics can be incorporated easily by specifying only the metric components ($tt$ and $rr$) and the associated model parameters. 
+The numerical integration, likelihood evaluation, optimization, sampling, and plotting are handled automatically.
 
-The three original scripts (SdS, quadratic gravity, Brans-Dicke) each
-carried their own copy of the same ~800 lines: data loading, geodesic
-integration, Roemer delay, relativistic Doppler + gravitational
-redshift, sky projection, MCMC bookkeeping, corner/convergence/orbit
-plotting. Only the metric functions and priors actually differed
-between them. SNOPE pulls all of that shared machinery into one tested
-core (`snope/`) and reduces each metric to a single config file
-(`snope/metrics/*.py`) defining g_tt(r), g_rr(r), the new physics
-parameter(s), and their priors.
+We include implementation examples for
 
-Nothing about accuracy was sacrificed to get here: every metric still
-integrates with `DOP853` at `rtol=atol=1e-12`, at whatever `n_points`
-you ask for -- exactly as the original scripts did.
+- Schwarzschild spacetime
+- Schwarzschild–de Sitter spacetime
+- Quadratic Gravity *(coming soon)*
+- Brans–Dicke Gravity *(coming soon)*
 
-## Install
+Although we currently use the S2 star as the reference dataset, the framework is designed to accommodate other stellar orbits with minimal modification.
+
+## Installation
+
+Clone the repository
 
 ```bash
-git clone <this repo>
+git clone https://github.com/PrajwalPrem/SNOPE.git
 cd SNOPE
 pip install -r requirements.txt
 ```
+Install the required packages
 
-Needs Python 3.9+. The MCMC step uses `emcee`'s multiprocessing `Pool`,
-so wrap standalone scripts in `if __name__ == "__main__":` on platforms
-where that matters. Notebooks are fine as they are.
+```bash
+pip install -r requirements.txt
+```
+Needs Python 3.9+. The MCMC uses `emcee`'s together with multiprocessing `Pool`.
+Standalone scripts should therefore be protected with `if __name__ == "__main__":` on platforms where multiprocessing requires it. 
+Jupyter notebooks require no additional setup.
+
+# Structure
+
+```
+snope/
+├── constants.py          Physical constants
+├── data.py               S2 astrometry/RV data loader
+├── orbit_model.py        Metric-independent physics engine
+├── priors.py             Prior definitions
+├── mcmc.py               MCMC wrapper
+├── plotting.py           Diagnostic and publication-quality plots
+├── pipeline.py           High-level fitting pipeline
+│
+├── metrics/
+│   ├── __init__.py
+│   ├── schwarzschild.py
+│   ├── sds.py
+│   ├── quadratic_gravity.py
+│   └── brans_dicke.py
+│
+├── notebooks/            Example notebooks
+├── data/                 Observational data
+└── tests/                Unit tests
+```
+
+## Data
+
+The repository includes the astrometric and radial-velocity measurements of the S2 star from
+
+> Gillessen et al. (2017),
+> *An Update on Monitoring Stellar Orbits in the Galactic Center*,
+> ApJ **837**, 30.
+   
+The corresponding VizieR catalogue is also available at
+
+https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/ApJ/837/30
+
+If this dataset is used in scientific work, please cite both the original publication and the associated VizieR catalogue.
+
 
 ## Quickstart
 
-Drop your S2 astrometry/RV tables in `data/` (format described in
-`data/README.md`), then:
+Running an MCMC analysis for the Schwarzschild–de Sitter metric requires only a few lines of code.
 
 ```python
 from snope.metrics.sds import main
@@ -50,58 +86,64 @@ sampler, flat_samples, best_fit = main(
 )
 ```
 
-That's the whole notebook. It optimizes a good starting point with
-L-BFGS-B, runs the `emcee` MCMC, prints a chi2/AIC/BIC summary, and
-saves a corner plot, a walker-trace plot, and a best-fit orbit/RV plot.
-Swap `sds` for `quadratic_gravity` or `brans_dicke` to fit a different
-spacetime -- nothing else changes.
+The pipeline automatically
 
-`main()` takes overrides for anything in the pipeline:
+The orbit modelling already takes into account - we are numerically evaluating the full geodesic equation and hence no approximations at the physics level. It also includes additional effects like delays etc. 
+
+1. numerically integrates the full geodesic equations for the chosen spacetime
+2. includes relativistic effects, example, light-travel (Roemer) delay, doppler delay
+3. optimizes the initial parameter vector using L-BFGS-B
+4. initializes the MCMC walkers, performs Bayesian parameter estimation with `emcee`
+5. computes the best-fitting parameters and reports χ², AIC, and BIC,
+6. produces diagnostic plots.
+
+To fit another spacetime, simply import the corresponding metric module.
+
+```python
+from snope.metrics.brans_dicke import main
+```
+
+or
+
+```python
+from snope.metrics.quadratic_gravity import main
+```
+
+No further changes to the analysis pipeline are required.
+
+Pipeline parameters may be overridden directly.
 
 ```python
 from snope.priors import PriorMode
 
 sampler, flat_samples, best_fit = main(
-    prior_mode=PriorMode.FLAT,      # see "Prior modes" below
-    n_walkers=64, n_steps=50000, burn_in=5000, n_points=1000,
+    prior_mode=PriorMode.FLAT,
+    n_walkers=64,
+    n_steps=50000,
+    burn_in=5000,
+    n_points=1000,
     n_cores=8,
 )
 ```
 
-See `notebooks/` for one ready-to-run notebook per metric, including a
-quick effective-potential check (see below) before you commit to a
-full MCMC run.
+Example notebooks are provided in the `notebooks/` directory.
 
-## Layout
 
-```
-snope/
-  constants.py        physical constants (G, c, yr->s, arcsec->rad)
-  data.py               S2 astrometry/RV CSV loader
-  orbit_model.py        S2OrbitModel -- the shared physics engine
-                         (geodesic integration, Roemer delay, redshift,
-                         sky projection). Metric-agnostic.
-  priors.py             ParamPrior / PriorSet -- flat / mixed / Gaussian
-  mcmc.py                S2OrbitMCMC -- the emcee wrapper
-  plotting.py            chi2/AIC/BIC summary, corner, convergence, orbit plots
-  pipeline.py             run_fit() / make_main() -- wires it all together
-  metrics/
-    __init__.py           MetricSpec interface (start here to add a metric)
-    sds.py                 Schwarzschild-de Sitter    (parameter: log10_lambda)
-    quadratic_gravity.py   Quadratic gravity            (parameter: k)
-    brans_dicke.py          Brans-Dicke (PPN form)       (parameter: omega_bd)
-notebooks/               one notebook per metric
-data/                     put your S2 tables here
-tests/                    fast sanity tests, no MCMC (tests/test_metrics.py)
+## An overview of the physics
+
+Each spacetime is assumed to be **static and spherically symmetric** with line element written as,
+
+```text
+ds² = g_tt(r) dt² + g_rr(r) dr² + r² dφ²,
 ```
 
-## The physics engine, briefly
+where the radial coordinate is measured in units of
 
-Every metric here is static, diagonal, and equatorial:
-`ds^2 = g_tt(r) dt^2 + g_rr(r) dr^2 + r^2 dphi^2`, with `r` in units of
-`R_s = 2GM_bh/c^2` (so the horizon sits near `r=1`). `S2OrbitModel`
-integrates the geodesic equations using the general diagonal-metric
-Christoffel symbols:
+```text
+R_s = 2GM/c².
+```
+
+The orbit model `S2OrbitModel` integrates the geodesic equations using the Christoffel symbols of a general diagonal metric.
 
 ```
 Gamma^t_tr     =  g_tt'/(2 g_tt)
@@ -111,33 +153,26 @@ Gamma^r_phiphi = -r/g_rr
 Gamma^phi_rphi =  1/r
 ```
 
-This is a standard identity for any diagonal metric of this form -- it
-doesn't assume `g_rr = -1/g_tt`, so it's correct whether your metric is
-Schwarzschild-like (`g_rr = 1/(-g_tt)`, e.g. SdS) or has independent
-`g_tt` and `g_rr` (quadratic gravity, Brans-Dicke). One integrator,
-correct for anything you plug in.
+We do not assume any further gauge conditions like `g_rr = -1/g_tt`. The conserved energy and angular momentum are computed from the orbital turning-point conditions. So, it is advisable to verify that the effective potential of the chosen metric,
 
-The turning-point condition used to find the orbit's conserved energy
-and angular momentum (`find_EL`), and the combined gravitational +
-Doppler redshift used in `compute_observables`, both depend on `g_tt`
-alone -- so they're identical across metrics too, and also live in the
-shared core rather than in each metric file.
-
-## Checking a metric before you fit it: the effective potential
-
-Before spending hours on a full MCMC run, it's worth checking that your
-chosen metric + parameter values actually produce a bound orbit --
-i.e. that the effective potential `V_eff(r) = -g_tt(r) * (1 + L^2/r^2)`
-has the periapsis/apoapsis turning points you expect at `E^2`. Each
-notebook has a cell for this: it plots `V_eff(r)` across the orbit's
-radial range, marks `E^2`, and shows where the two curves cross. If
-they don't cross twice, the orbit isn't bound for those parameters, and
-the integrator will fail or return garbage -- better to catch that here
-than after a long MCMC run.
+```text
+V_eff(r) = -g_tt(r) (1 + L²/r²),
+```
+admits a bound orbit. A bound orbit requires two turning points. 
 
 ## Adding a new metric
 
-Create `snope/metrics/my_metric.py`:
+Adding a new gravity model requires only a single metric file. The new module must provide
+
+- `g_tt(r)`
+- `g_rr(r)`
+- `dg_tt/dr`
+- `dg_rr/dr`
+- the model parameter,
+- parameter priors,
+- horizon location (if required).
+
+Here is an example to create `snope/metrics/my_metric.py`:
 
 ```python
 from . import MetricSpec
@@ -189,24 +224,17 @@ main = make_main(metric, param_priors, default_prior_mode=PriorMode.MIXED,
                   n_walkers=40, n_steps=30000, burn_in=3000, n_points=1000)
 ```
 
-That's it -- `from snope.metrics.my_metric import main` now works just
-like the three built-in metrics. `R_s` (metres) is passed to every
-metric function in case your parameter has physical units that need
-converting into the dimensionless `r` used internally (see `sds.py`'s
-`log10_lambda`, in m^-2); ignore it otherwise (see
-`quadratic_gravity.py`, `brans_dicke.py`).
-
-If your metric needs a parameter-dependent horizon location (like
-quadratic gravity's `rh(k)`), implement that in `horizon_radius` -- it
-sets the integration-clamp radius and, by default, seeds the Keplerian
-guess for the root-solver.
+With this, `from snope.metrics.my_metric import main` now works just
+like the other built-in examples. 
 
 ## Prior modes
 
-Every parameter in a metric's `param_priors` dict carries both a flat
-range and a Gaussian `(mean, std)` at once. `prior_mode` (an argument to
-`main()`, or to `PriorSet` directly) picks which one is actually used,
-for every parameter, with a single switch:
+Every parameter stores both
+
+- flat bounds
+- Gaussian prior information
+
+The active prior is selected globally.
 
 | mode | orbital elements + new-physics parameter | t_peri, x0, y0, vx0, vy0, vz0 |
 |---|:---:|:---:|
@@ -221,15 +249,10 @@ main(prior_mode=PriorMode.MIXED)      # default
 main(prior_mode=PriorMode.GAUSSIAN)
 ```
 
-To change which parameters count as "offsets" in mixed mode, pass
-`gaussian_params=(...)` to `main()`. A Gaussian parameter's hard sampler
-bounds are always mean +/- 5*std (`priors.N_SIGMA_BOUND`), so switching
-modes never changes where the sampler is allowed to go -- only whether
-it's penalized for straying from the center.
 
 ## Outputs
 
-Each run writes files prefixed with the metric's name (e.g. `sds_*`):
+Each run generates:
 
 ```
 <prefix>_flat_samples.npy       flattened post-burn-in chain
@@ -238,29 +261,35 @@ Each run writes files prefixed with the metric's name (e.g. `sds_*`):
 <prefix>_statistical_info.txt    chi2/AIC/BIC + best-fit params + autocorr times
 <prefix>_corner.png
 <prefix>_convergence.png
-<prefix>_orbit.png               4-panel: sky orbit, RV(t), RA(t), Dec(t)
+<prefix>_orbit.png               sky orbit (RA vs Dec), RV(t), RA(t), Dec(t)
 ```
 
-## A note on runtime
+## Performance
 
-The defaults ported from the original scripts (`n_steps=30000,
-n_walkers=40, n_points=1000`) are a cluster-scale run: every likelihood
-evaluation re-integrates the geodesic at `rtol=atol=1e-12`, and
-L-BFGS-B's numerical gradient means the initial optimization alone can
-take on the order of `100 x n_params` evaluations. For local iteration,
-turn everything down first -- e.g. `n_points=200, n_steps=200` -- to
-sanity-check a new metric or prior choice quickly, then scale back up
-for the real run. `n_cores` defaults to all available cores via
-`multiprocessing.Pool`.
+The default settings are
 
-## Tests
-
-```bash
-pip install pytest
-pytest tests/
 ```
+n_walkers = 40
+n_steps = 30000
+n_points = 1000
+```
+It is recommended to test with a smaller number of steps for testing.
+Each likelihood evaluation integrates the geodesic equations using SciPy's **DOP853** integrator with `rtol=atol=1e-12`. 
 
-`tests/test_metrics.py` builds small synthetic S2-like data on the fly
-and checks that every built-in metric integrates a closed orbit and
-returns finite, physically plausible observables. It's a fast smoke
-test, not a scientific validation of any particular metric's physics.
+## Citation
+
+If you use **SNOPE** in published research, please cite the original observational dataset used in your analysis (e.g. Gillessen et al. 2017 for the S2 data):
+
+Also consider citing the methodological paper describing the SNOPE framework:
+
+```bibtex
+@article{HassanPuttasiddappa:2026cuh,
+    author = {Hassan Puttasiddappa, Prajwal and Mushtaq, Muzammil and Ramirez, Willian and Mota, David F.},
+    title = {Bounds on {$\Lambda$} at the Galactic Center},
+    eprint = {2606.13356},
+    archivePrefix = {arXiv},
+    primaryClass = {gr-qc},
+    year = {2026},
+    month = jun
+}
+```
