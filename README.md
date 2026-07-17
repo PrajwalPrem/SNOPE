@@ -3,7 +3,7 @@
 **S**pherical-symmetric spacetime **N**umerical **O**rbit and **P**arameter **E**stimation.
 
 <p align="center">
-  <img src="images/logo" width="700">
+  <img src="images/logo">
 </p>
 
 SNOPE is a simple Python framework for modelling stellar orbits in a static, spherically symmetric spacetime of choice and performing Bayesian parameter estimation using Markov Chain Monte Carlo (MCMC).
