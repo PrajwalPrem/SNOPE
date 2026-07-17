@@ -3,7 +3,7 @@
 **S**pherical-symmetric spacetime **N**umerical **O**rbit and **P**arameter **E**stimation.
 
 <p align="center">
-  <img src="logo.png" width="700">
+  <img src="logo_SNOPE.png" width="700">
 </p>
 
 SNOPE is a simple Python framework for modelling stellar orbits in a static, spherically symmetric spacetime of choice and performing Bayesian parameter estimation using Markov Chain Monte Carlo (MCMC).
@@ -61,7 +61,6 @@ snope/
 ├── data/                 Observational data
 └── tests/                Unit tests
 ```
-
 ## Data
 
 The repository includes the astrometric and radial-velocity measurements of the S2 star from
@@ -76,7 +75,6 @@ https://vizier.cds.unistra.fr/viz-bin/VizieR?-source=J/ApJ/837/30
 
 If this dataset is used in scientific work, please cite both the original publication and the associated VizieR catalogue.
 
-
 ## Quickstart
 
 Running an MCMC analysis for the Schwarzschild–de Sitter metric requires only a few lines of code.
@@ -89,7 +87,6 @@ sampler, flat_samples, best_fit = main(
     data_path_rv="data/tab_gillessen_vr.csv",
 )
 ```
-
 The pipeline automatically
 
 The orbit modelling already takes into account - we are numerically evaluating the full geodesic equation and hence no approximations at the physics level. It also includes additional effects like delays etc. 
@@ -112,7 +109,6 @@ or
 ```python
 from snope.metrics.quadratic_gravity import main
 ```
-
 No further changes to the analysis pipeline are required.
 
 Pipeline parameters may be overridden directly.
@@ -129,9 +125,7 @@ sampler, flat_samples, best_fit = main(
     n_cores=8,
 )
 ```
-
 Example notebooks are provided in the `notebooks/` directory.
-
 
 ## An overview of the physics
 
@@ -156,7 +150,6 @@ Gamma^r_rr     =  g_rr'/(2 g_rr)
 Gamma^r_phiphi = -r/g_rr
 Gamma^phi_rphi =  1/r
 ```
-
 We do not assume any further gauge conditions like `g_rr = -1/g_tt`. The conserved energy and angular momentum are computed from the orbital turning-point conditions. So, it is advisable to verify that the effective potential of the chosen metric,
 
 ```text
@@ -252,8 +245,6 @@ main(prior_mode=PriorMode.FLAT)
 main(prior_mode=PriorMode.MIXED)      # default
 main(prior_mode=PriorMode.GAUSSIAN)
 ```
-
-
 ## Outputs
 
 Each run generates:
@@ -300,3 +291,6 @@ Also consider citing the methodological paper describing the SNOPE framework:
     month = jun
 }
 ```
+### Related codes:
+1. [*PyGro*](https://github.com/rdellamonica/pygro)- PyGRO: a Python Integrator for General Relativistic Orbits ([arXiv](https://arxiv.org/abs/2504.20152))
+2. [*GC-OrbitFit*](https://github.com/pmplewa/GC-OrbitFit) - Uses nested sampling for inference
