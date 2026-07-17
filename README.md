@@ -281,6 +281,9 @@ Each likelihood evaluation integrates the geodesic equations using SciPy's **DOP
 If you use **SNOPE** in published research, please cite the original observational dataset used in your analysis (e.g. Gillessen et al. 2017 for the S2 data):
 
 Also consider citing the methodological paper describing the SNOPE framework:
+> Hassan Puttasiddappa et.al. (2026),
+> *Bounds on Λ at the Galactic Center*,
+> xxxxx.
 
 ```bibtex
 @article{HassanPuttasiddappa:2026cuh,
