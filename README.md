@@ -44,11 +44,11 @@ Jupyter notebooks require no additional setup.
 snope/
 ├── constants.py          Physical constants
 ├── data.py               S2 astrometry/RV data loader
-├── orbit_model.py        Metric-independent physics engine
-├── priors.py             Prior definitions
-├── mcmc.py               MCMC wrapper
-├── plotting.py           Diagnostic and publication-quality plots
-├── pipeline.py           High-level fitting pipeline
+├── orbit_model.py        (Metric-independent) Physics engine that includes the Geodesic equation (Christoffel symbols etc)
+├── priors.py             Priors 
+├── mcmc.py               MCMC 
+├── plotting.py           Corner, convergence plots
+├── pipeline.py           Fitting pipeline
 │
 ├── metrics/
 │   ├── __init__.py
